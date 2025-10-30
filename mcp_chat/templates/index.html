@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Taiga MCP Chat Probe</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <main>
+        <h1>Taiga MCP Chat Probe</h1>
+        <p>Testing MCP endpoint: <code id="mcp-url">{{ mcp_url }}</code></p>
+        <form id="chat-form">
+            <label for="prompt">Prompt</label>
+            <textarea id="prompt" name="prompt" rows="3" required></textarea>
+            <button type="submit">Send</button>
+        </form>
+        <section id="result"></section>
+    </main>
+    <script>
+    const form = document.getElementById('chat-form');
+    const result = document.getElementById('result');
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        result.textContent = 'Calling MCP…';
+        const prompt = document.getElementById('prompt').value;
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                result.textContent = `Error: ${error.detail}`;
+                return;
+            }
+
+            const payload = await response.json();
+            result.textContent = JSON.stringify(payload, null, 2);
+        } catch (err) {
+            result.textContent = `Request failed: ${err}`;
+        }
+    });
+    </script>
+</body>
+</html>

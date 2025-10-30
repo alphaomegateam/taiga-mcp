@@ -1,0 +1,56 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #111827;
+    color: #e5e7eb;
+    display: flex;
+    justify-content: center;
+    padding: 2rem;
+}
+
+main {
+    width: clamp(320px, 60vw, 720px);
+    background: #1f2937;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #374151;
+    background: #111827;
+    color: #e5e7eb;
+    resize: vertical;
+    margin-bottom: 1rem;
+}
+
+button {
+    background: #2563eb;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1d4ed8;
+}
+
+#result {
+    margin-top: 1.5rem;
+    white-space: pre-wrap;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: #0f172a;
+    padding: 1rem;
+    border-radius: 8px;
+}
