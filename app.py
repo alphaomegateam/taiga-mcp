@@ -19,6 +19,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from taiga_client import TaigaAPIError, get_taiga_client
+from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
 
