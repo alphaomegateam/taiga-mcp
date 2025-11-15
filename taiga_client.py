@@ -324,9 +324,23 @@ class TaigaClient:
     async def delete_issue(self, issue_id: int) -> None:
         await self._request("DELETE", f"/issues/{issue_id}")
 
-    async def list_users(self, *, search: str | None = None) -> list[dict[str, Any]]:
-        params = {"search": search} if search else None
-        data = await self._request("GET", "/users", params=params)
+    async def list_users(
+        self,
+        *,
+        search: str | None = None,
+        project_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        params: list[tuple[str, Any]] = []
+        if search:
+            params.append(("search", search))
+        if project_id is not None:
+            params.append(("project", project_id))
+
+        data = await self._request("GET", "/users", params=params or None)
+        return list(data)
+
+    async def list_project_users(self, project_id: int) -> list[dict[str, Any]]:
+        data = await self._request("GET", f"/projects/{project_id}/users")
         return list(data)
 
     async def list_milestones(self, project_id: int) -> list[dict[str, Any]]:

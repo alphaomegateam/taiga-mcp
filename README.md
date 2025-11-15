@@ -37,7 +37,7 @@
 - `taiga.tasks.create(user_story_id, subject, description?, assigned_to?, status?, tags?, due_date?, idempotency_key?)` — creates a Taiga task under a story, applying status lookups and idempotency safeguards.
 - `taiga.tasks.update(task_id, subject?, description?, assigned_to?, status?, tags?, due_date?, version?)` — updates a task with the same optimistic concurrency handling as stories.
 - `taiga.tasks.list(project_id?, user_story_id?, assigned_to?, search?, status?, page?, page_size?)` — lists tasks with flexible filters and pagination metadata, resolving status names when a `project_id` is supplied.
-- `taiga.users.list(search?)` — finds Taiga users by substring matching against full name, username, or email to support assignee resolution.
+- `taiga.users.list(project_id?, search?)` — finds Taiga users by project membership with optional substring matching across full name, username, or email.
 - `taiga.milestones.list(project_id, search?)` — returns milestones/sprints for a project, allowing optional name/slug filtering.
 
 ## Action Proxy Surface
@@ -85,10 +85,10 @@
   - `curl.exe -sN -H "Accept: text/event-stream" http://127.0.0.1:8010/sse/`
 
 ## Container Build & Publish
-- Pick an image name (for example `ghcr.io/your-org/taiga-mcp`) and set:
-  - PowerShell: `$env:CONTAINER_IMAGE = 'ghcr.io/your-org/taiga-mcp'` and `$env:IMAGE_TAG = 'v0.0.27'`
-  - Bash: `export CONTAINER_IMAGE=ghcr.io/your-org/taiga-mcp` and `export IMAGE_TAG=v0.0.27`
-- Build tagged images:
+- Pick an image name (default deployment uses `ghcr.io/johnwblack/taiga-mcp`) and set:
+  - PowerShell: `$env:CONTAINER_IMAGE = 'ghcr.io/johnwblack/taiga-mcp'` and `$env:IMAGE_TAG = 'v0.0.29'`
+  - Bash: `export CONTAINER_IMAGE=ghcr.io/johnwblack/taiga-mcp` and `export IMAGE_TAG=v0.0.29`
+- Build tagged images (set `--platform` when cross-building):
   - `docker build -t "$CONTAINER_IMAGE:$IMAGE_TAG" -t "$CONTAINER_IMAGE:latest" .`
 - Push to your registry:
   - `docker push "$CONTAINER_IMAGE:$IMAGE_TAG"`
@@ -100,8 +100,9 @@
   - `$env:AZURE_CONTAINER_APP = 'taiga-mcp'`
 - Deploy the new revision (after pushing the image):
   - `az containerapp update -g $env:AZURE_RESOURCE_GROUP -n $env:AZURE_CONTAINER_APP --image "$CONTAINER_IMAGE:$IMAGE_TAG"`
-- Or run the helper script (builds, pushes, and deploys in one step; honours the same env vars):
-  - `python scripts/deploy_to_azure.py`
+- Or run the helper script (builds, pushes, and deploys in one step; honours the same env vars and accepts overrides):
+  - `python scripts/deploy_to_azure.py --image "$env:CONTAINER_IMAGE" --tag "$env:IMAGE_TAG" --resource-group "$env:AZURE_RESOURCE_GROUP" --container-app "$env:AZURE_CONTAINER_APP"`
+  - Optional flags: `--skip-build`, `--skip-push`, `--latest-tag` help with hotfix redeploys
 - Helpful Windows settings (avoid WinError 5 permission issues):
   - `$env:AZURE_EXTENSION_DIR = Join-Path $HOME '.az-extensions'`
   - `$env:AZURE_CONFIG_DIR = Join-Path $HOME '.az-cli'`

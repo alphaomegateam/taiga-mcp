@@ -1735,15 +1735,33 @@ async def taiga_tasks_list(
     name="taiga.users.list",
     annotations=ToolAnnotations(openWorldHint=True, readOnlyHint=True, idempotentHint=True),
 )
-async def taiga_users_list(search: str | None | _UnsetType = UNSET) -> list[dict[str, Any]]:
+async def taiga_users_list(
+    project_id: int | None | _UnsetType = UNSET,
+    search: str | None | _UnsetType = UNSET,
+) -> list[dict[str, Any]]:
     """List Taiga users to support ID resolution."""
 
+    project_filter = None if project_id is UNSET else project_id
     search_filter = None if search is UNSET else search
     async with get_taiga_client() as client:
-        users = await client.list_users(search=search_filter or None)
+        try:
+            users = await client.list_users(search=search_filter or None, project_id=project_filter)
+        except TaigaAPIError as exc:
+            if project_filter is not None and exc.status_code in {401, 403}:
+                users = await client.list_project_users(project_filter)
+            else:
+                raise
+
+    normalised: list[dict[str, Any]] = []
+    for entry in users:
+        if isinstance(entry, dict) and isinstance(entry.get("user"), dict):
+            payload = dict(entry["user"])
+        else:
+            payload = dict(entry)
+        normalised.append(payload)
 
     keep = ("id", "full_name", "username", "email")
-    results = [_slice(user, keep) for user in users]
+    results = [_slice(user, keep) for user in normalised]
 
     if search_filter:
         lowered = search_filter.lower()

@@ -69,6 +69,12 @@ class DummyToolClient:
                 "email": "alex@example.com",
             },
         ]
+        self.project_users: dict[int, list[dict[str, Any]]] = {
+            3: [
+                {"user": self.users[0]},
+                {"user": self.users[1]},
+            ]
+        }
         self.created_tasks: list[dict[str, Any]] = []
         self.updated_stories: list[tuple[int, dict[str, Any]]] = []
         self.updated_tasks: list[tuple[int, dict[str, Any]]] = []
@@ -94,6 +100,7 @@ class DummyToolClient:
             {"page": 1, "page_size": 20, "total": 1},
         )
         self.raise_on_update_task: TaigaAPIError | None = None
+        self.fail_global_user_list: TaigaAPIError | None = None
 
     async def get_user_story(self, story_id: int) -> dict[str, Any]:
         return dict(self.stories[story_id])
@@ -155,8 +162,15 @@ class DummyToolClient:
         )
         return self.list_tasks_result
 
-    async def list_users(self, *, search: str | None = None) -> list[dict[str, Any]]:
-        if not search:
+    async def list_users(
+        self,
+        *,
+        search: str | None = None,
+        project_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        if self.fail_global_user_list:
+            raise self.fail_global_user_list
+        if not search and project_id is None:
             return list(self.users)
         lowered = search.lower()
         return [
@@ -169,6 +183,9 @@ class DummyToolClient:
 
     async def list_milestones(self, project_id: int) -> list[dict[str, Any]]:
         return [m for m in self.milestones if m.get("project") == project_id]
+
+    async def list_project_users(self, project_id: int) -> list[dict[str, Any]]:
+        return list(self.project_users.get(project_id, []))
 
 
 @pytest.fixture()
@@ -261,7 +278,7 @@ async def test_taiga_tasks_list_requires_project_for_status(tool_client: DummyTo
 
 @pytest.mark.anyio("asyncio")
 async def test_taiga_users_list_search_filter(tool_client: DummyToolClient):
-    users = await app.taiga_users_list(search="john")
+    users = await app.taiga_users_list(project_id=3, search="john")
     assert len(users) == 1
     assert users[0]["username"] == "jblack"
 
@@ -271,6 +288,14 @@ async def test_taiga_milestones_list_search(tool_client: DummyToolClient):
     milestones = await app.taiga_milestones_list(project_id=9, search="m5")
     assert len(milestones) == 1
     assert milestones[0]["slug"] == "m5"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_taiga_users_list_falls_back_to_project_endpoint(tool_client: DummyToolClient):
+    tool_client.fail_global_user_list = TaigaAPIError("Forbidden", status_code=403)
+    users = await app.taiga_users_list(project_id=3)
+    usernames = {user["username"] for user in users}
+    assert usernames == {"jblack", "agreen"}
 
 
 @pytest.mark.anyio("asyncio")
