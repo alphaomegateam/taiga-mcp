@@ -16,6 +16,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Mount, Route
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 
 from taiga_client import TaigaAPIError, get_taiga_client
@@ -23,7 +24,20 @@ from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("Taiga MCP", sse_path="/", streamable_http_path="/")
+# Configure allowed hosts for DNS rebinding protection
+# This allows the server to accept requests from the reverse proxy
+ALLOWED_HOST = os.getenv("ALLOWED_HOST", "projects.alphaomegateam.co")
+
+mcp = FastMCP(
+    "Taiga MCP",
+    sse_path="/",
+    streamable_http_path="/",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[f"{ALLOWED_HOST}:*", "localhost:*", "127.0.0.1:*", "[::1]:*"],
+        allowed_origins=[f"https://{ALLOWED_HOST}:*", "http://localhost:*", "http://127.0.0.1:*"],
+    ),
+)
 # Prebuild sub-apps so we can wire their lifespans into the parent Starlette app.
 sse_subapp = mcp.sse_app()
 
