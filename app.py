@@ -34,8 +34,9 @@ mcp = FastMCP(
     streamable_http_path="/",
     transport_security=TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
-        allowed_hosts=[f"{ALLOWED_HOST}:*", "localhost:*", "127.0.0.1:*", "[::1]:*"],
-        allowed_origins=[f"https://{ALLOWED_HOST}:*", "http://localhost:*", "http://127.0.0.1:*"],
+        # Include both exact domain and port wildcards for full compatibility
+        allowed_hosts=[ALLOWED_HOST, f"{ALLOWED_HOST}:*", "localhost", "localhost:*", "127.0.0.1", "127.0.0.1:*", "[::1]", "[::1]:*"],
+        allowed_origins=[f"https://{ALLOWED_HOST}", f"https://{ALLOWED_HOST}:*", "http://localhost", "http://localhost:*", "http://127.0.0.1", "http://127.0.0.1:*"],
     ),
 )
 # Prebuild sub-apps so we can wire their lifespans into the parent Starlette app.
