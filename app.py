@@ -1894,6 +1894,38 @@ async def _rewrite_sse_path(request, call_next):
     return await call_next(request)
 
 
+# ---------------------------------------------------------------------------
+# MCP transport authentication
+# ---------------------------------------------------------------------------
+# Protect the /mcp and /sse endpoints with a Bearer token so that only
+# clients that know the shared secret can connect.  The token is the same
+# ACTION_PROXY_API_KEY already used for the /actions/* REST surface.
+_MCP_AUTH_PATHS = ("/mcp", "/mcp/", "/sse", "/sse/")
+
+
+@app.middleware("http")
+async def _require_bearer_token(request: Request, call_next):
+    path: str = request.scope.get("path", "")
+
+    # Only gate MCP / SSE transports – other routes have their own auth.
+    if not path.startswith(_MCP_AUTH_PATHS):
+        return await call_next(request)
+
+    expected = _expected_api_key()
+    if not expected:
+        return _error_response("MCP auth token is not configured", 503)
+
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return _error_response("Missing or malformed Authorization header", 401)
+
+    token = auth_header[7:]  # strip "Bearer "
+    if not secrets.compare_digest(token, expected):
+        return _error_response("Invalid bearer token", 401)
+
+    return await call_next(request)
+
+
 if __name__ == "__main__":
     import uvicorn
 
