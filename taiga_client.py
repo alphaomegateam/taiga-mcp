@@ -324,6 +324,26 @@ class TaigaClient:
     async def delete_issue(self, issue_id: int) -> None:
         await self._request("DELETE", f"/issues/{issue_id}")
 
+    async def list_issue_statuses(self, project_id: int) -> list[dict[str, Any]]:
+        params = {"project": project_id}
+        data = await self._request("GET", "/issue-statuses", params=params)
+        return list(data)
+
+    async def list_issue_priorities(self, project_id: int) -> list[dict[str, Any]]:
+        params = {"project": project_id}
+        data = await self._request("GET", "/priorities", params=params)
+        return list(data)
+
+    async def list_issue_severities(self, project_id: int) -> list[dict[str, Any]]:
+        params = {"project": project_id}
+        data = await self._request("GET", "/severities", params=params)
+        return list(data)
+
+    async def list_issue_types(self, project_id: int) -> list[dict[str, Any]]:
+        params = {"project": project_id}
+        data = await self._request("GET", "/issue-types", params=params)
+        return list(data)
+
     async def list_users(
         self,
         *,
