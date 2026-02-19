@@ -2022,6 +2022,101 @@ async def taiga_issues_create(
     return _slice(issue, keep)
 
 
+@mcp.tool(
+    name="taiga.issues.update",
+    annotations=ToolAnnotations(openWorldHint=True, idempotentHint=False, destructiveHint=False),
+)
+async def taiga_issues_update(
+    issue_id: int,
+    subject: str | None | _UnsetType = UNSET,
+    description: str | None | _UnsetType = UNSET,
+    status: int | str | None | _UnsetType = UNSET,
+    priority: int | str | None | _UnsetType = UNSET,
+    severity: int | str | None | _UnsetType = UNSET,
+    issue_type: int | str | None | _UnsetType = UNSET,
+    assigned_to: int | None | _UnsetType = UNSET,
+    tags: list[str] | None | _UnsetType = UNSET,
+    version: int | None | _UnsetType = UNSET,
+) -> dict[str, Any]:
+    """Update fields on an existing Taiga issue."""
+
+    async with get_taiga_client() as client:
+        existing = await client.get_issue(issue_id)
+        project_raw = existing.get("project")
+        try:
+            project_id = int(project_raw)
+        except (TypeError, ValueError):
+            raise TaigaAPIError("Unable to resolve project for issue update") from None
+
+        payload: dict[str, Any] = {}
+        has_updates = False
+
+        if subject is not UNSET:
+            payload["subject"] = subject
+            has_updates = True
+        if description is not UNSET:
+            payload["description"] = description
+            has_updates = True
+        if assigned_to is not UNSET:
+            payload["assigned_to"] = assigned_to
+            has_updates = True
+        if tags is not UNSET:
+            payload["tags"] = [] if tags is None else tags
+            has_updates = True
+
+        if status is not UNSET:
+            if status is None:
+                payload["status"] = None
+            else:
+                payload["status"] = await _resolve_issue_status_id(client, project_id, status)
+            has_updates = True
+        if priority is not UNSET:
+            if priority is None:
+                payload["priority"] = None
+            else:
+                payload["priority"] = await _resolve_issue_priority_id(client, project_id, priority)
+            has_updates = True
+        if severity is not UNSET:
+            if severity is None:
+                payload["severity"] = None
+            else:
+                payload["severity"] = await _resolve_issue_severity_id(client, project_id, severity)
+            has_updates = True
+        if issue_type is not UNSET:
+            if issue_type is None:
+                payload["type"] = None
+            else:
+                payload["type"] = await _resolve_issue_type_id(client, project_id, issue_type)
+            has_updates = True
+
+        if not has_updates:
+            raise ValueError("At least one field must be provided to update the issue")
+
+        if version is UNSET or version is None:
+            version_value = existing.get("version")
+            if version_value is None:
+                raise TaigaAPIError("Unable to resolve version for issue update")
+            try:
+                payload["version"] = int(version_value)
+            except (TypeError, ValueError):
+                raise TaigaAPIError("Unable to resolve version for issue update") from None
+        else:
+            payload["version"] = int(version)
+
+        try:
+            updated = await client.update_issue(issue_id, payload)
+        except TaigaAPIError as exc:
+            if exc.status_code == 409:
+                latest = await client.get_issue(issue_id)
+                latest_version = latest.get("version")
+                raise ValueError(
+                    f"Conflict updating issue {issue_id}: latest version is {latest_version}"
+                ) from exc
+            raise
+
+    return dict(updated)
+
+
 async def healthz(_):
     return PlainTextResponse("ok", status_code=200)
 

@@ -470,3 +470,34 @@ async def test_taiga_issues_create_resolves_all_dimensions(tool_client: DummyToo
     assert payload["type"] == 70
     assert payload["assigned_to"] == 90
     assert payload["tags"] == ["urgent"]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_taiga_issues_update_resolves_status(tool_client: DummyToolClient):
+    result = await app.taiga_issues_update(
+        issue_id=8,
+        subject="Updated bug",
+        status="Closed",
+    )
+
+    assert result["subject"] == "Updated bug"
+    issue_id, payload = tool_client.updated_issues[-1]
+    assert issue_id == 8
+    assert payload["status"] == 42
+    assert payload["version"] == 1
+
+
+@pytest.mark.anyio("asyncio")
+async def test_taiga_issues_update_conflict_raises_value_error(tool_client: DummyToolClient):
+    tool_client.raise_on_update_issue = TaigaAPIError("Conflict", status_code=409)
+
+    with pytest.raises(ValueError) as excinfo:
+        await app.taiga_issues_update(issue_id=8, subject="Revised")
+
+    assert "latest version" in str(excinfo.value)
+
+
+@pytest.mark.anyio("asyncio")
+async def test_taiga_issues_update_requires_field(tool_client: DummyToolClient):
+    with pytest.raises(ValueError):
+        await app.taiga_issues_update(issue_id=8)
