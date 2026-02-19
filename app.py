@@ -1883,6 +1883,79 @@ async def taiga_milestones_list(
     return filtered
 
 
+@mcp.tool(
+    name="taiga.issues.list",
+    annotations=ToolAnnotations(openWorldHint=True, readOnlyHint=True, idempotentHint=True),
+)
+async def taiga_issues_list(
+    project_id: int,
+    assigned_to: int | None | _UnsetType = UNSET,
+    status: int | str | None | _UnsetType = UNSET,
+    priority: int | str | None | _UnsetType = UNSET,
+    severity: int | str | None | _UnsetType = UNSET,
+    issue_type: int | str | None | _UnsetType = UNSET,
+    search: str | None | _UnsetType = UNSET,
+    tags: list[str] | None | _UnsetType = UNSET,
+    page: int | None | _UnsetType = UNSET,
+    page_size: int | None | _UnsetType = UNSET,
+) -> dict[str, Any]:
+    """List issues for a Taiga project with optional filters and pagination."""
+
+    assigned_filter = None if assigned_to is UNSET else assigned_to
+    search_filter = None if search is UNSET else search
+    tags_filter = None if tags is UNSET else tags
+    page_filter = None if page is UNSET else page
+    page_size_filter = None if page_size is UNSET else page_size
+
+    async with get_taiga_client() as client:
+        resolved_status: int | None = None
+        if status is not UNSET and status is not None:
+            resolved_status = await _resolve_issue_status_id(client, project_id, status)
+
+        resolved_priority: int | None = None
+        if priority is not UNSET and priority is not None:
+            resolved_priority = await _resolve_issue_priority_id(client, project_id, priority)
+
+        resolved_severity: int | None = None
+        if severity is not UNSET and severity is not None:
+            resolved_severity = await _resolve_issue_severity_id(client, project_id, severity)
+
+        resolved_type: int | None = None
+        if issue_type is not UNSET and issue_type is not None:
+            resolved_type = await _resolve_issue_type_id(client, project_id, issue_type)
+
+        issues, pagination = await client.list_issues(
+            project_id=project_id,
+            assigned_to=assigned_filter,
+            status=resolved_status,
+            priority=resolved_priority,
+            severity=resolved_severity,
+            type_=resolved_type,
+            search=search_filter,
+            tags=tags_filter,
+            page=page_filter,
+            page_size=page_size_filter,
+        )
+
+    keep = (
+        "id",
+        "ref",
+        "subject",
+        "project",
+        "status",
+        "priority",
+        "severity",
+        "type",
+        "description",
+        "assigned_to",
+        "tags",
+        "created_date",
+        "modified_date",
+    )
+    filtered_issues = [_slice(issue, keep) for issue in issues]
+    return {"issues": filtered_issues, "pagination": pagination}
+
+
 async def healthz(_):
     return PlainTextResponse("ok", status_code=200)
 

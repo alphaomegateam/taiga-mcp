@@ -424,3 +424,23 @@ async def test_taiga_tasks_create_rejects_bad_due_date(tool_client: DummyToolCli
             subject="Invalid date",
             due_date="21-11-2025",
         )
+
+
+@pytest.mark.anyio("asyncio")
+async def test_taiga_issues_list_filters_and_pagination(tool_client: DummyToolClient):
+    response = await app.taiga_issues_list(project_id=3, page=1, page_size=50)
+
+    assert response["pagination"]["total"] == 1
+    assert response["issues"][0]["subject"] == "Bug report"
+    call = tool_client.list_issues_calls[-1]
+    assert call["project_id"] == 3
+    assert call["page"] == 1
+    assert call["page_size"] == 50
+
+
+@pytest.mark.anyio("asyncio")
+async def test_taiga_issues_list_resolves_status_name(tool_client: DummyToolClient):
+    await app.taiga_issues_list(project_id=3, status="In Progress")
+
+    call = tool_client.list_issues_calls[-1]
+    assert call["status"] == 41
