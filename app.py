@@ -1354,6 +1354,58 @@ async def _resolve_task_status_id(client, project_id: int, status: int | str | N
     raise TaigaAPIError(f"Task status '{status}' not found for project {project_id}")
 
 
+async def _resolve_issue_status_id(client, project_id: int, status: int | str | None) -> int | None:
+    if status is None:
+        return None
+    if isinstance(status, int):
+        return status
+
+    statuses = await client.list_issue_statuses(project_id)
+    for entry in statuses:
+        if entry.get("name") == status or entry.get("slug") == status:
+            return entry.get("id")
+    raise TaigaAPIError(f"Issue status '{status}' not found for project {project_id}")
+
+
+async def _resolve_issue_priority_id(client, project_id: int, priority: int | str | None) -> int | None:
+    if priority is None:
+        return None
+    if isinstance(priority, int):
+        return priority
+
+    priorities = await client.list_issue_priorities(project_id)
+    for entry in priorities:
+        if entry.get("name") == priority or entry.get("slug") == priority:
+            return entry.get("id")
+    raise TaigaAPIError(f"Issue priority '{priority}' not found for project {project_id}")
+
+
+async def _resolve_issue_severity_id(client, project_id: int, severity: int | str | None) -> int | None:
+    if severity is None:
+        return None
+    if isinstance(severity, int):
+        return severity
+
+    severities = await client.list_issue_severities(project_id)
+    for entry in severities:
+        if entry.get("name") == severity or entry.get("slug") == severity:
+            return entry.get("id")
+    raise TaigaAPIError(f"Issue severity '{severity}' not found for project {project_id}")
+
+
+async def _resolve_issue_type_id(client, project_id: int, type_: int | str | None) -> int | None:
+    if type_ is None:
+        return None
+    if isinstance(type_, int):
+        return type_
+
+    types = await client.list_issue_types(project_id)
+    for entry in types:
+        if entry.get("name") == type_ or entry.get("slug") == type_:
+            return entry.get("id")
+    raise TaigaAPIError(f"Issue type '{type_}' not found for project {project_id}")
+
+
 @mcp.tool(
     name="taiga.stories.list",
     annotations=ToolAnnotations(openWorldHint=True, readOnlyHint=True, idempotentHint=True),

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Sequence
 
 import pytest
 
@@ -101,6 +101,61 @@ class DummyToolClient:
         )
         self.raise_on_update_task: TaigaAPIError | None = None
         self.fail_global_user_list: TaigaAPIError | None = None
+        self.issues: dict[int, dict[str, Any]] = {
+            8: {"id": 8, "project": 3, "version": 1, "subject": "Bug report", "status": 40},
+        }
+        self.issue_statuses: dict[int, list[dict[str, Any]]] = {
+            3: [
+                {"id": 40, "name": "New", "slug": "new"},
+                {"id": 41, "name": "In Progress", "slug": "in-progress"},
+                {"id": 42, "name": "Closed", "slug": "closed"},
+            ]
+        }
+        self.issue_priorities: dict[int, list[dict[str, Any]]] = {
+            3: [
+                {"id": 50, "name": "Low", "slug": "low"},
+                {"id": 51, "name": "Normal", "slug": "normal"},
+                {"id": 52, "name": "High", "slug": "high"},
+            ]
+        }
+        self.issue_severities: dict[int, list[dict[str, Any]]] = {
+            3: [
+                {"id": 60, "name": "Minor", "slug": "minor"},
+                {"id": 61, "name": "Normal", "slug": "normal"},
+                {"id": 62, "name": "Critical", "slug": "critical"},
+            ]
+        }
+        self.issue_types: dict[int, list[dict[str, Any]]] = {
+            3: [
+                {"id": 70, "name": "Bug", "slug": "bug"},
+                {"id": 71, "name": "Question", "slug": "question"},
+                {"id": 72, "name": "Enhancement", "slug": "enhancement"},
+            ]
+        }
+        self.created_issues: list[dict[str, Any]] = []
+        self.updated_issues: list[tuple[int, dict[str, Any]]] = []
+        self.list_issues_calls: list[dict[str, Any]] = []
+        self.list_issues_result: tuple[list[dict[str, Any]], dict[str, Any]] = (
+            [
+                {
+                    "id": 8,
+                    "ref": 3,
+                    "subject": "Bug report",
+                    "project": 3,
+                    "status": 40,
+                    "priority": 51,
+                    "severity": 61,
+                    "type": 70,
+                    "description": "Something broke",
+                    "assigned_to": None,
+                    "tags": ["bug"],
+                    "created_date": "2025-10-01T12:00:00Z",
+                    "modified_date": "2025-10-01T12:00:00Z",
+                }
+            ],
+            {"page": 1, "page_size": 20, "total": 1},
+        )
+        self.raise_on_update_issue: TaigaAPIError | None = None
 
     async def get_user_story(self, story_id: int) -> dict[str, Any]:
         return dict(self.stories[story_id])
@@ -186,6 +241,69 @@ class DummyToolClient:
 
     async def list_project_users(self, project_id: int) -> list[dict[str, Any]]:
         return list(self.project_users.get(project_id, []))
+
+    async def list_issue_statuses(self, project_id: int) -> list[dict[str, Any]]:
+        return list(self.issue_statuses.get(project_id, []))
+
+    async def list_issue_priorities(self, project_id: int) -> list[dict[str, Any]]:
+        return list(self.issue_priorities.get(project_id, []))
+
+    async def list_issue_severities(self, project_id: int) -> list[dict[str, Any]]:
+        return list(self.issue_severities.get(project_id, []))
+
+    async def list_issue_types(self, project_id: int) -> list[dict[str, Any]]:
+        return list(self.issue_types.get(project_id, []))
+
+    async def list_issues(
+        self,
+        *,
+        project_id: int | None = None,
+        assigned_to: int | None = None,
+        status: int | None = None,
+        priority: int | None = None,
+        severity: int | None = None,
+        type_: int | None = None,
+        search: str | None = None,
+        tags: Sequence[str] | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        self.list_issues_calls.append(
+            {
+                "project_id": project_id,
+                "assigned_to": assigned_to,
+                "status": status,
+                "priority": priority,
+                "severity": severity,
+                "type_": type_,
+                "search": search,
+                "tags": tags,
+                "page": page,
+                "page_size": page_size,
+            }
+        )
+        return self.list_issues_result
+
+    async def create_issue(self, payload: dict[str, Any]) -> dict[str, Any]:
+        record = dict(payload)
+        record.setdefault("id", 200 + len(self.created_issues))
+        record.setdefault("ref", 100 + len(self.created_issues))
+        record.setdefault("created_date", "2025-10-01T12:00:00Z")
+        record.setdefault("modified_date", "2025-10-01T12:00:00Z")
+        record.setdefault("version", 1)
+        self.created_issues.append(dict(payload))
+        return record
+
+    async def get_issue(self, issue_id: int) -> dict[str, Any]:
+        return dict(self.issues.get(issue_id, {"id": issue_id, "project": 3, "version": 1}))
+
+    async def update_issue(self, issue_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+        if self.raise_on_update_issue:
+            raise self.raise_on_update_issue
+        self.updated_issues.append((issue_id, dict(payload)))
+        issue = dict(self.issues.get(issue_id, {"project": 3}))
+        issue.update(payload)
+        return issue
 
 
 @pytest.fixture()
