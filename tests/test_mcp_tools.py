@@ -444,3 +444,29 @@ async def test_taiga_issues_list_resolves_status_name(tool_client: DummyToolClie
 
     call = tool_client.list_issues_calls[-1]
     assert call["status"] == 41
+
+
+@pytest.mark.anyio("asyncio")
+async def test_taiga_issues_create_resolves_all_dimensions(tool_client: DummyToolClient):
+    result = await app.taiga_issues_create(
+        project_id=3,
+        subject="Login page broken",
+        description="Cannot log in",
+        status="In Progress",
+        priority="High",
+        severity="Critical",
+        issue_type="Bug",
+        assigned_to=90,
+        tags=["urgent"],
+    )
+
+    assert result["subject"] == "Login page broken"
+    assert len(tool_client.created_issues) == 1
+    payload = tool_client.created_issues[0]
+    assert payload["project"] == 3
+    assert payload["status"] == 41
+    assert payload["priority"] == 52
+    assert payload["severity"] == 62
+    assert payload["type"] == 70
+    assert payload["assigned_to"] == 90
+    assert payload["tags"] == ["urgent"]

@@ -1956,6 +1956,72 @@ async def taiga_issues_list(
     return {"issues": filtered_issues, "pagination": pagination}
 
 
+@mcp.tool(
+    name="taiga.issues.create",
+    annotations=ToolAnnotations(openWorldHint=True, idempotentHint=False, destructiveHint=False),
+)
+async def taiga_issues_create(
+    project_id: int,
+    subject: str,
+    description: str | None = None,
+    status: int | str | None = None,
+    priority: int | str | None = None,
+    severity: int | str | None = None,
+    issue_type: int | str | None = None,
+    assigned_to: int | None = None,
+    tags: list[str] | None = None,
+) -> dict[str, Any]:
+    """Create an issue in a Taiga project and return the created record."""
+
+    async with get_taiga_client() as client:
+        payload: dict[str, Any] = {
+            "project": project_id,
+            "subject": subject,
+        }
+        if description:
+            payload["description"] = description
+
+        status_id = await _resolve_issue_status_id(client, project_id, status)
+        if status_id is not None:
+            payload["status"] = status_id
+
+        priority_id = await _resolve_issue_priority_id(client, project_id, priority)
+        if priority_id is not None:
+            payload["priority"] = priority_id
+
+        severity_id = await _resolve_issue_severity_id(client, project_id, severity)
+        if severity_id is not None:
+            payload["severity"] = severity_id
+
+        type_id = await _resolve_issue_type_id(client, project_id, issue_type)
+        if type_id is not None:
+            payload["type"] = type_id
+
+        if assigned_to is not None:
+            payload["assigned_to"] = assigned_to
+        if tags:
+            payload["tags"] = tags
+
+        issue = await client.create_issue(payload)
+
+    keep = (
+        "id",
+        "ref",
+        "subject",
+        "project",
+        "status",
+        "priority",
+        "severity",
+        "type",
+        "description",
+        "assigned_to",
+        "tags",
+        "created_date",
+        "modified_date",
+    )
+    return _slice(issue, keep)
+
+
 async def healthz(_):
     return PlainTextResponse("ok", status_code=200)
 
