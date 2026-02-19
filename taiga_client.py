@@ -344,6 +344,57 @@ class TaigaClient:
         data = await self._request("GET", "/issue-types", params=params)
         return list(data)
 
+    async def list_issues(
+        self,
+        *,
+        project_id: int | None = None,
+        assigned_to: int | None = None,
+        status: int | None = None,
+        priority: int | None = None,
+        severity: int | None = None,
+        type_: int | None = None,
+        search: str | None = None,
+        tags: Sequence[str] | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        params: list[tuple[str, Any]] = []
+        if project_id is not None:
+            params.append(("project", project_id))
+        if assigned_to is not None:
+            params.append(("assigned_to", assigned_to))
+        if status is not None:
+            params.append(("status", status))
+        if priority is not None:
+            params.append(("priority", priority))
+        if severity is not None:
+            params.append(("severity", severity))
+        if type_ is not None:
+            params.append(("type", type_))
+        if search:
+            params.append(("q", search))
+        if tags:
+            for tag in tags:
+                params.append(("tags", tag))
+        if page is not None:
+            params.append(("page", page))
+        if page_size is not None:
+            params.append(("page_size", page_size))
+
+        response = await self._client.get("/issues", params=params or None)
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:  # pragma: no cover - error details for humans
+            raise TaigaAPIError(
+                f"Taiga API request failed with status {exc.response.status_code}: {exc.response.text}",
+                status_code=exc.response.status_code,
+                payload=_safe_json(exc.response),
+            ) from exc
+
+        pagination = _extract_pagination(response.headers)
+        data = response.json() if response.content else []
+        return list(data), pagination
+
     async def list_users(
         self,
         *,
